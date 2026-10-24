@@ -168,7 +168,7 @@ jobs:
       # it is also why .claude/skills/ holds real files rather than a symlink
       # pointing somewhere else in the tree.
       - id: claude
-        uses: anthropics/claude-code-action@v1.0.248
+        uses: anthropics/claude-code-action@v1.0.252
         env:
           # Headless runs end when the main conversation stops. A review that
           # hands its work to background subagents or background commands and
