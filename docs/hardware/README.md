@@ -36,13 +36,9 @@ Cross-checked across three sources (Waveshare wiki, their ESP-IDF BSP headers, a
 
 ## What's the microSD slot for?
 
-**Nothing, by default — it's optional storage.** No demo requirement, and this project never touches it (pins 13–18 sit unused; a card can be inserted or not, it makes no difference). Sketches that *want* it typically use it for:
+**Scripts, mainly, and it's optional.** The board sketch mounts the card at boot, and the runtime loads `/app.js` and `/apps/*.js` from it in preference to the flash partition. That makes the edit loop: copy files on a PC, reinsert the card, long-press BOOT. Without a card, scripts load from the 9.9 MB FATFS partition on flash instead. Apps reach the card through `fs` too, for config and caches: the weather demo reads `/config/weather.json` from it. The card is mounted once, so swapping cards needs a reset; a reload re-reads files, not the filesystem. Details: [`docs/build-and-deploy.md`](../build-and-deploy.md#deploying-appjs).
 
-- logging sensor data over long periods
-- image / font / audio assets too big for flash
-- configuration files you can edit from a PC
-
-It's wired for 4-bit SDMMC (CLK 16, CMD 15, D0–D3 = 17/18/13/14), which is the fast mode — use the ESP32 `SD_MMC` library, not the SPI `SD` library, if you add support. A natural extension of this demo would be an "SD" tab that mounts the card and shows capacity/contents.
+It's wired for 4-bit SDMMC (CLK 16, CMD 15, D0–D3 = 17/18/13/14), which is the fast mode, so the sketch uses the ESP32 `SD_MMC` library rather than the SPI `SD` library.
 
 ## Power / battery
 

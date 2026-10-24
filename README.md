@@ -1,4 +1,4 @@
-# esp32-ui-lab
+# lvx-esp32
 
 A scriptable LVGL firmware for ESP32 touch panels: flash it once, then build the UI in JavaScript files you edit on a PC and hot-reload on the device without recompiling. The firmware embeds a QuickJS-ng engine and a curated LVGL binding surface; the apps are data it loads at boot.
 
@@ -10,17 +10,13 @@ A scriptable LVGL firmware for ESP32 touch panels: flash it once, then build the
 
 Two Arduino libraries plus one sketch per board. [`quickjs-ng/`](firmware/quickjs-ng/README.md) is the vendored JS engine and [`lvgl-js-bindings/`](firmware/lvgl-js-bindings/README.md) is the LVGL binding layer; neither knows anything about a particular panel. [`boards/waveshare-s3-touch-147/`](firmware/boards/waveshare-s3-touch-147/README.md) is the board-specific half: pinout, display bring-up, and the three host hooks. Build and flash with `.\flash.ps1` from the repo root.
 
-### [`app/`](app/) — the apps
+### [`app/`](app/) — the launcher and demo apps
 
-`app.js` is the launcher, which lists `apps/*.js` and runs whichever you tap. Deploy by copying to an SD card and long-pressing BOOT (≥700 ms), or push over serial with `.\push.ps1`. `selftest.js` is the on-hardware test of the binding surface. Script API: [`docs/binding-api.md`](docs/binding-api.md).
+`app.js` is the launcher, which lists `apps/*.js` and runs whichever you tap. Of those, `wifi.js` is the network setup screen, which the firmware also offers from its corner button when the network needs fixing; `tasks`, `vitals` and `weather` are demos, there to exercise the platform and show what it can do. To build your own, see [Using it for your own project](#using-it-for-your-own-project). Deploy by copying to an SD card and long-pressing BOOT (≥700 ms), or push over serial with `.\push.ps1`. `selftest.js` is the on-hardware test of the binding surface. Script API: [`docs/binding-api.md`](docs/binding-api.md).
 
 Apps can be written two ways. Directly against the bindings, which is what [`docs/binding-api.md`](docs/binding-api.md) documents and what [`app/selftest.js`](app/selftest.js) still does. Or as JSX components with hooks, which is what every shipped app now does: `src/*.jsx` builds to `apps/*.js` with `node tools/build-app.mjs`, using the reconciler in [`app/lib/ui.js`](app/lib/ui.js). That layer is pure JavaScript over the same bindings and adds nothing to the firmware — see [`docs/ui-runtime.md`](docs/ui-runtime.md).
 
 Both remain supported. The pre-port version of each app is frozen in [`tools/fixtures/`](tools/fixtures/) as the baseline a parity test compares against, so the imperative style stays readable side by side with what replaced it.
-
-### [`experiments/c-dashboard/`](experiments/c-dashboard/README.md) — frozen
-
-A complete 4-tab LVGL dashboard (heap chart, touch tester, WiFi scanner, system panel) compiled into a single firmware image, with no scripting. This is where the display pipeline and touch driver were first proven on hardware, which is why it is kept rather than deleted. It is frozen: it gets no new features, and it is not developed toward parity with the JS platform.
 
 ## Docs
 
@@ -29,3 +25,28 @@ A complete 4-tab LVGL dashboard (heap chart, touch tester, WiFi scanner, system 
 ## Quick start
 
 Build/deploy instructions (toolchain setup, the FQBN, the flash scripts, getting `app.js` onto the board) live in [`BUILDING.md`](BUILDING.md). The short version: run `.\flash.ps1` at the repo root. The board shows up as a `USB Serial Device` on the native USB-C port — use a **data** cable.
+
+## Using it for your own project
+
+What you take from this repo is the firmware. The demo apps are examples, not a base you have to build on.
+
+1. **Flash the firmware once**, as in the quick start. On a different board, start from [`docs/portability.md`](docs/portability.md): you write a board sketch, and both libraries come over unchanged.
+2. **Write an app** as `app/src/<name>.jsx`. The counter in [`docs/ui-runtime.md`](docs/ui-runtime.md#the-five-minute-version) is a working starting point and [`app/src/tasks.jsx`](app/src/tasks.jsx) is the fuller example. If you'd rather skip JSX, write plain JavaScript straight into `app/apps/<name>.js` against [`docs/binding-api.md`](docs/binding-api.md).
+3. **Build and push it:** `node tools/build-app.mjs <name>`, then `.\push.ps1 app\apps\<name>.js`. The board writes it and runs it straight away, so the loop is edit, build, push. Copying `app.js` and `apps/` to an SD card and long-pressing BOOT works too.
+4. **Pin it** so the board boots straight into your app without the firmware's home button over it: long-press its row in the launcher, or send `pin /apps/<name>.js` over serial. A long-press of BOOT still reaches the launcher, and a Wi-Fi button still appears over a pinned app that needs a network it doesn't have. See [Pinning one app](docs/binding-api.md#pinning-one-app).
+
+What you can delete, and which CI check reads each file:
+
+| Path | What it is | Keep it? | Read by |
+|---|---|---|---|
+| `app/app.js` and `src/app.jsx` | The launcher | Yes, unless you write your own. BOOT long-press and the firmware's home button open it. | `test-parity.mjs` (`launcher`), so replacing it fails too |
+| `app/apps/wifi.js` and `src/wifi.jsx` | Wi-Fi setup | If any app uses `fetch()` or `wifi`. | `test-parity.mjs` (`wifi`, `wifi/scan`, `wifi/password`) |
+| `app/lib/ui.js` | The JSX runtime, bundled into each built app | While any `src/*.jsx` remains, which includes the launcher and Wi-Fi app. | `build-app.mjs --check`, `test-ui.mjs` |
+| `app/apps/{vitals,weather}.js` and their `src/*.jsx` | Demos | No. | `test-parity.mjs` (`vitals`, `weather`, `weather/offline`, `weather/failed`) |
+| `app/apps/tasks.js` and `src/tasks.jsx` | Demo | No. | `test-ui.mjs` (its end-to-end cases) |
+| `app/ui-selftest.js` and `src/ui-selftest.jsx` | On-board test of the JSX runtime | Only if you change the runtime. | `build-app.mjs --check`, if only one of the pair goes |
+| `app/selftest.js`, `app/engine-probe.js` | On-board tests of the bindings and the engine | Only if you change the firmware. | Nothing beyond the syntax and binding checks every script gets |
+
+So deleting or replacing a file means changing the check that reads it in the same commit, or CI fails: drop its entries from [`tools/test-parity.mjs`](tools/test-parity.mjs) along with the fixture they compare against in `tools/fixtures/`, drop its cases from [`tools/test-ui.mjs`](tools/test-ui.mjs), and delete a `src/*.jsx` together with its built output.
+
+Deleting from the repo also does not delete from a board. `rm /apps/weather.js` over serial removes the copy on the card; a copy pushed while no card was fitted lives on flash, where the firmware still falls back to it, and `rm flash:/apps/weather.js` removes that one.

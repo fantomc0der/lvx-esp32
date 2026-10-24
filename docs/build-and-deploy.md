@@ -1,6 +1,6 @@
 # Build & deploy
 
-Building the firmware and getting `app.js` onto the board. Toolchain setup, the FQBN, and general USB/serial troubleshooting are in [`BUILDING.md`](../BUILDING.md); the frozen C dashboard has its own notes in [`experiments/c-dashboard/build-and-flash.md`](experiments/c-dashboard/build-and-flash.md).
+Building the firmware and getting `app.js` onto the board. Toolchain setup, the FQBN, and general USB/serial troubleshooting are in [`BUILDING.md`](../BUILDING.md).
 
 ## Building the firmware
 

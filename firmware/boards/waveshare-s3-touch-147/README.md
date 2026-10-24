@@ -37,4 +37,4 @@ Two extras over serial (115200): typing `reload` triggers the same reload as the
 .\flash.ps1              # compile this board (links both libraries), upload, monitor
 ```
 
-The hardware files (`board_pins.h`, `jd9853_panel.h`, `axs5106l_touch.*`, `lv_conf.h`) started as copies of the frozen [`c-dashboard`](../../../experiments/c-dashboard/README.md), where they were first proven against hardware, and are now maintained here. `lv_conf.h` diverges from that copy on purpose in two lines: Montserrat 28 and 40 are enabled, because scripts can select those sizes.
+The hardware files (`board_pins.h`, `jd9853_panel.h`, `axs5106l_touch.*`, `lv_conf.h`) are the source of truth for this board; hardware fixes land here. `lv_conf.h` enables Montserrat 28 and 40 alongside the smaller sizes, because scripts can select them.

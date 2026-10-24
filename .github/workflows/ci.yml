@@ -145,11 +145,6 @@ jobs:
               -b "$FQBN" "$board" || exit 1
           done
 
-      # Frozen, but still built: it is the reference for the display and touch
-      # bring-up, so it should not be allowed to rot silently.
-      - name: Build the frozen C dashboard
-        run: arduino-cli compile -b "$FQBN" experiments/c-dashboard/app
-
   # The one job that executes the C layer rather than only compiling it. It runs
   # the binding layer natively under AddressSanitizer and UndefinedBehaviorSanitizer,
   # against stubs for the Arduino surface, so a use-after-free or a leak in the
