@@ -61,7 +61,7 @@
 #define BAT_PIN 12
 
 // ---------------------------------------------------------------- microSD (SDMMC)
-// Not used by this demo, recorded for completeness (bsp_sdcard.h).
+// Mounted at boot as the preferred script store (bsp_sdcard.h).
 #define SD_PIN_CLK 16
 #define SD_PIN_CMD 15
 #define SD_PIN_D0  17
