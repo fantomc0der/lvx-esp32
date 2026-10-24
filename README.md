@@ -12,7 +12,7 @@ Two Arduino libraries plus one sketch per board. [`quickjs-ng/`](firmware/quickj
 
 ### [`app/`](app/) — the launcher and demo apps
 
-`app.js` is the launcher, which lists `apps/*.js` and runs whichever you tap. Of those, `wifi.js` is the network setup screen the firmware opens on its own; `tasks`, `vitals` and `weather` are demos, there to exercise the platform and show what it can do. To build your own, see [Using it for your own project](#using-it-for-your-own-project). Deploy by copying to an SD card and long-pressing BOOT (≥700 ms), or push over serial with `.\push.ps1`. `selftest.js` is the on-hardware test of the binding surface. Script API: [`docs/binding-api.md`](docs/binding-api.md).
+`app.js` is the launcher, which lists `apps/*.js` and runs whichever you tap. Of those, `wifi.js` is the network setup screen, which the firmware also offers from its corner button when the network needs fixing; `tasks`, `vitals` and `weather` are demos, there to exercise the platform and show what it can do. To build your own, see [Using it for your own project](#using-it-for-your-own-project). Deploy by copying to an SD card and long-pressing BOOT (≥700 ms), or push over serial with `.\push.ps1`. `selftest.js` is the on-hardware test of the binding surface. Script API: [`docs/binding-api.md`](docs/binding-api.md).
 
 Apps can be written two ways. Directly against the bindings, which is what [`docs/binding-api.md`](docs/binding-api.md) documents and what [`app/selftest.js`](app/selftest.js) still does. Or as JSX components with hooks, which is what every shipped app now does: `src/*.jsx` builds to `apps/*.js` with `node tools/build-app.mjs`, using the reconciler in [`app/lib/ui.js`](app/lib/ui.js). That layer is pure JavaScript over the same bindings and adds nothing to the firmware — see [`docs/ui-runtime.md`](docs/ui-runtime.md).
 
@@ -33,16 +33,20 @@ What you take from this repo is the firmware. The demo apps are examples, not a 
 1. **Flash the firmware once**, as in the quick start. On a different board, start from [`docs/portability.md`](docs/portability.md): you write a board sketch, and both libraries come over unchanged.
 2. **Write an app** as `app/src/<name>.jsx`. The counter in [`docs/ui-runtime.md`](docs/ui-runtime.md#the-five-minute-version) is a working starting point and [`app/src/tasks.jsx`](app/src/tasks.jsx) is the fuller example. If you'd rather skip JSX, write plain JavaScript straight into `app/apps/<name>.js` against [`docs/binding-api.md`](docs/binding-api.md).
 3. **Build and push it:** `node tools/build-app.mjs <name>`, then `.\push.ps1 app\apps\<name>.js`. The board writes it and runs it straight away, so the loop is edit, build, push. Copying `app.js` and `apps/` to an SD card and long-pressing BOOT works too.
-4. **Pin it** so the board boots straight into your app with nothing drawn over it: long-press its row in the launcher, or send `pin /apps/<name>.js` over serial. A long-press of BOOT still reaches the launcher. See [Pinning one app](docs/binding-api.md#pinning-one-app).
+4. **Pin it** so the board boots straight into your app without the firmware's home button over it: long-press its row in the launcher, or send `pin /apps/<name>.js` over serial. A long-press of BOOT still reaches the launcher, and a Wi-Fi button still appears over a pinned app that needs a network it doesn't have. See [Pinning one app](docs/binding-api.md#pinning-one-app).
 
-What you can delete:
+What you can delete, and which CI check reads each file:
 
-| Path | What it is | Keep it? |
-|---|---|---|
-| `app/app.js` (built from `src/app.jsx`) | The launcher | Yes, unless you write your own. BOOT long-press and the firmware's home button open it. |
-| `app/apps/wifi.js` (built from `src/wifi.jsx`) | Wi-Fi setup | If any app uses `fetch()` or `wifi`. The firmware opens it when the network needs a person to fix it. |
-| `app/lib/ui.js` | The JSX runtime, bundled into each built app | If you write JSX. |
-| `app/apps/{tasks,vitals,weather}.js` and their `src/*.jsx` | Demos | No. |
-| `app/selftest.js`, `app/ui-selftest.js`, `app/engine-probe.js` | On-board tests of the bindings, the JSX runtime and the engine | Only if you change the firmware or the runtime. |
+| Path | What it is | Keep it? | Read by |
+|---|---|---|---|
+| `app/app.js` and `src/app.jsx` | The launcher | Yes, unless you write your own. BOOT long-press and the firmware's home button open it. | `test-parity.mjs` (`launcher`), so replacing it fails too |
+| `app/apps/wifi.js` and `src/wifi.jsx` | Wi-Fi setup | If any app uses `fetch()` or `wifi`. | `test-parity.mjs` (`wifi`, `wifi/scan`, `wifi/password`) |
+| `app/lib/ui.js` | The JSX runtime, bundled into each built app | While any `src/*.jsx` remains, which includes the launcher and Wi-Fi app. | `build-app.mjs --check`, `test-ui.mjs` |
+| `app/apps/{vitals,weather}.js` and their `src/*.jsx` | Demos | No. | `test-parity.mjs` (`vitals`, `weather`, `weather/offline`, `weather/failed`) |
+| `app/apps/tasks.js` and `src/tasks.jsx` | Demo | No. | `test-ui.mjs` (its end-to-end cases) |
+| `app/ui-selftest.js` and `src/ui-selftest.jsx` | On-board test of the JSX runtime | Only if you change the runtime. | `build-app.mjs --check`, if only one of the pair goes |
+| `app/selftest.js`, `app/engine-probe.js` | On-board tests of the bindings and the engine | Only if you change the firmware. | Nothing beyond the syntax and binding checks every script gets |
 
-Two things to know before deleting a demo. Removing it from the repo does not remove it from a board that already has it; `rm /apps/weather.js` over serial does. And [`tools/test-parity.mjs`](tools/test-parity.mjs) checks each demo against its original in `tools/fixtures/`, so remove a deleted demo's entries there too, or CI fails.
+So deleting or replacing a file means changing the check that reads it in the same commit, or CI fails: drop its entries from [`tools/test-parity.mjs`](tools/test-parity.mjs) along with the fixture they compare against in `tools/fixtures/`, drop its cases from [`tools/test-ui.mjs`](tools/test-ui.mjs), and delete a `src/*.jsx` together with its built output.
+
+Deleting from the repo also does not delete from a board. `rm /apps/weather.js` over serial removes the copy on the card; a copy pushed while no card was fitted lives on flash, where the firmware still falls back to it, and `rm flash:/apps/weather.js` removes that one.

@@ -30,7 +30,7 @@ The two you must never change: `PSRAM=opi` (the S3**R8** has octal PSRAM; anythi
 | `PartitionScheme=app3M_fat9M_16MB` | A 3 MB app partition, since the default 4 MB scheme leaves about 1.2 MB and the firmware is larger than that, plus the 9.9 MB FATFS partition the runtime can load scripts from. |
 | `CDCOnBoot=cdc` | Routes `Serial` to the native USB-C port. Without it the port is silent. |
 | `FlashMode=qio` | Quad I/O flash access. |
-| `USBMode=hwcdc` | The S3's built-in USB-Serial/JTAG, which is the only USB this board has. |
+| `USBMode=hwcdc` | Puts the board's one USB-C port on the S3's USB-Serial/JTAG controller rather than its USB-OTG controller, which is what TinyUSB (`USBMode=default`) would use. |
 
 ## Building and flashing
 
