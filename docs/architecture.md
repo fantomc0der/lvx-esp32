@@ -32,11 +32,9 @@ That seam is drawn at hardware, not at "compiled versus scripted". Which file bo
 
 The runtime pays roughly 429 KB of flash and ~80 KB of PSRAM for this, and gives up compile-time checking.
 
-Alongside it, [`experiments/c-dashboard/`](../experiments/c-dashboard/README.md) is a complete four-tab LVGL dashboard compiled into a single image with no scripting. It is where the display pipeline and touch driver were first proven against hardware, which is why it is kept. It is frozen: no new features, and no work to bring it to parity with the platform.
-
 ## The hardware foundation
 
-Four concerns are solved identically in the board sketch and in the frozen C dashboard, and were solved first in the latter:
+Four concerns are solved in the board sketch:
 
 - **Display bring-up.** The panel is a JD9853 driven through Arduino_GFX's ST7789 class plus a JD9853-specific register blob, with a 34-pixel column offset centering the 172-wide panel in the controller's 240-wide RAM. Details: [`hardware/display-pipeline.md`](hardware/display-pipeline.md).
 - **The flush path.** LVGL renders RGB565 little-endian, the panel wants big-endian, and exactly one swap happens: `lv_draw_sw_rgb565_swap()` followed by `draw16bitBeRGBBitmap()`. Pairing either with the wrong partner double-corrects and produces wrong colors.
@@ -49,17 +47,9 @@ One process-level rule holds everywhere: **a single task does everything.** `loo
 
 Two Arduino libraries hold the reusable part: `quickjs-ng/` (the vendored engine) and `lvgl-js-bindings/` (the LVGL bindings plus the app supervisor). `boards/waveshare-s3-touch-147/` is the sketch that owns the hardware, and `app/app.js` is the launcher that ships to the board.
 
-The board sketch is the source of hardware truth. Its glue files (`board_pins.h`, `jd9853_panel.h`, `axs5106l_touch.*`, `lv_conf.h`) started as copies of the C dashboard's, and hardware fixes now land here; the frozen dashboard is not updated to match. One divergence is deliberate rather than drift: the board sketch's `lv_conf.h` additionally enables Montserrat 28 and 40, because scripts can select those sizes and the C dashboard has no need of them.
+The board sketch is the source of hardware truth, and its glue files (`board_pins.h`, `jd9853_panel.h`, `axs5106l_touch.*`, `lv_conf.h`) are where hardware fixes land. Its `lv_conf.h` enables Montserrat 28 and 40 alongside the smaller sizes, because scripts can select them.
 
 Everything above the hardware, meaning the VM, the LVGL bindings, the ownership machinery, the boot chain, the reload path, and the serial protocol, is documented in [`runtime-architecture.md`](runtime-architecture.md). What a port to another board actually has to supply is in [`portability.md`](portability.md).
-
-## The frozen C dashboard
-
-`experiments/c-dashboard/app/` is one firmware image containing a four-tab dashboard. Its structure is flat on purpose: four `build*Tab()` functions called once from `buildUi()`, two `lv_timer`s driving live values (vitals at 500 ms, WiFi scan polling at 250 ms), and a `loop()` that calls `lv_timer_handler()`, maintains the FPS counter, and debounces the BOOT button.
-
-Worth knowing: the FPS figure counts flush-callback invocations, not loop iterations, because loop iterations only measure polling rate. The "load" arc is render throughput against a 30 flush/s target, not CPU load, and is labelled as such on screen. Battery voltage reads `null`-ish when WiFi is active, because GPIO12 is an ADC2 channel and the radio arbitrates ADC2.
-
-Which parts of it are board-specific and which transfer to other hardware is analyzed file by file in [`experiments/c-dashboard/portability.md`](experiments/c-dashboard/portability.md).
 
 ## Constraints that shape everything
 

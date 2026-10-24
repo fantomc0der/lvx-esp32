@@ -6,8 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A scriptable LVGL firmware platform for ESP32 touch panels, developed on a **Waveshare ESP32-S3-Touch-LCD-1.47** (ESP32-S3R8, 172×320 IPS, JD9853 display controller, AXS5106L touch). `firmware/` is flashed once and holds an embedded QuickJS-ng engine plus a curated LVGL binding layer; `app/` holds the JavaScript the firmware loads at boot, editable and hot-reloadable without recompiling. Two seams organize everything: firmware against apps (`firmware/` vs `app/`), and platform against board (`firmware/{quickjs-ng,lvgl-js-bindings}/` vs `firmware/boards/<name>/`). Full picture: `docs/architecture.md`.
 
-`experiments/c-dashboard/` is a complete compiled-C dashboard, **frozen**: it is where the display and touch stack was first proven, and it is kept for that reason only. Do not propose features for it, and do not develop it toward parity with the platform (the platform has already overtaken it, adding `fetch`, `fs`, text input, and the app/pin model, and lacking nothing the dashboard has).
-
 ## Build, flash, and test commands
 
 Everything uses one fixed FQBN — never change `PSRAM=opi` (this board has octal PSRAM; anything else boot-loops) or `CDCOnBoot=cdc` (without it, serial over the native USB-C port is silent):
@@ -28,7 +26,6 @@ Build/flash (`flash.ps1` encodes the FQBN and finds the port):
 
 ```powershell
 .\flash.ps1                         # the firmware: -BuildOnly, -Port COMx, -Monitor, -Board <name>
-cd experiments/c-dashboard; .\flash.ps1   # the frozen C dashboard; same flags
 .\push.ps1 app\apps\weather.js      # send one script over serial (never paste by hand)
 node tools/build-app.mjs            # app/src/*.jsx -> app/apps/*.js, before pushing a JSX app
 ```
@@ -78,7 +75,7 @@ One trap the PC-side checks cannot catch on their own: **Node accepts control ch
 **`firmware/`** splits into a reusable half and a board-specific half:
 - `quickjs-ng/` — vendored JS engine (v0.17.0), Arduino library, unmodified upstream. `tools/vendor-quickjs.ps1 -Target <tag>` re-vendors it; never hand-edit `src/`. It is vendored only because QuickJS-ng is not in the Arduino library index. Through v0.15.1 it carried a local Xtensa `int32_t` patch that upstream has since taken (history: `docs/engine-notes.md`). One Xtensa-only miscompile of the same root cause is still in upstream (string iteration never advancing, which hangs or OOMs the VM), so `build_opt.h` passes `-fno-strict-aliasing`: do not drop that flag without re-running `app/engine-probe.js` on the board (Trap 5 in `docs/engine-notes.md`).
 - `lvgl-js-bindings/` — the LVGL binding layer exposed to scripts, plus the app supervisor (`jsvm_app.cpp`: the boot chain, the corner button, the serial protocol, the built-in fallback script). An Arduino library with no pin numbers, no resolution, and no panel name in it. Keep it that way; `MALLOC_CAP_SPIRAM` in 5 files is the one real coupling, documented in `docs/portability.md` rather than fixed. **Policy about running scripts belongs here, not in a board sketch** — a second board must not need a copy of it.
-- `boards/<name>/` — one sketch per board, hardware only: pinout (`board_pins.h`), panel init (`jd9853_panel.h`), touch, `lv_conf.h`, the display stack, the three host hooks (`jsvm_host_fps()`, `jsvm_host_backlight()`, `jsvm_host_battery()`), and a `JsvmAppConfig` handed to `jsvm_app_begin()`. 189 lines here; resist adding policy back. **This is the hardware source of truth — fix bugs here.** Its glue files started as copies of `experiments/c-dashboard/app`; that direction is now historical and nothing is copied back. `lv_conf.h` diverges from the dashboard's copy in exactly 2 lines on purpose (Montserrat 28 and 40 enabled, because scripts can select them) — do not "resolve" that by re-copying.
+- `boards/<name>/` — one sketch per board, hardware only: pinout (`board_pins.h`), panel init (`jd9853_panel.h`), touch, `lv_conf.h`, the display stack, the three host hooks (`jsvm_host_fps()`, `jsvm_host_backlight()`, `jsvm_host_battery()`), and a `JsvmAppConfig` handed to `jsvm_app_begin()`. 189 lines here; resist adding policy back. **This is the hardware source of truth — fix bugs here.** Its `lv_conf.h` enables Montserrat 28 and 40 on purpose, because scripts can select them.
 
 **`app/`** — `app.js` is the launcher shipped to the board; `apps/*.js` are individual apps (`sys.launch(path)` switches between them); `selftest.js` is the on-hardware binding-layer test, deployed in place of `app.js`.
 

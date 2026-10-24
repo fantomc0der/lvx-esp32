@@ -26,22 +26,13 @@ Organized by topic, roughly following the repo layout (see the [top-level README
 
 ## The hardware
 
-Applies to every board sketch, and to the frozen C dashboard, since they drive the panel identically.
+The Waveshare ESP32-S3-Touch-LCD-1.47 and its board sketch.
 
 | Doc | What's in it |
 |---|---|
 | [hardware/README.md](hardware/README.md) | The board itself: pinout, chip quirks, what the microSD slot is for, traps specific to this exact Waveshare variant |
 | [hardware/display-pipeline.md](hardware/display-pipeline.md) | How pixels get from LVGL to the JD9853 panel: driver workaround, byte order, buffers, rotation |
 | [hardware/touch.md](hardware/touch.md) | The AXS5106L driver, the I2C protocol, and the full story of the axis-mapping bug — found and fixed with hardware measurement |
-
-## The frozen C dashboard
-
-Kept because it is where the hardware was first proven; see [`experiments/c-dashboard/`](../experiments/c-dashboard/README.md).
-
-| Doc | What's in it |
-|---|---|
-| [experiments/c-dashboard/portability.md](experiments/c-dashboard/portability.md) | Which code in the C dashboard is specific to this device vs. reusable elsewhere, file by file |
-| [experiments/c-dashboard/build-and-flash.md](experiments/c-dashboard/build-and-flash.md) | Arduino board settings, the FQBN, flashing from the CLI, scripted serial capture on Windows |
 
 Start with [`BUILDING.md`](../BUILDING.md) at the repo root for setup and deployment; come here for the deeper "how does this actually work" material.
 
