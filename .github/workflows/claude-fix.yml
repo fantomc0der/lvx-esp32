@@ -69,7 +69,7 @@ jobs:
           # review workflow. A push authored by GITHUB_TOKEN does not.
           token: ${{ secrets.PR_AUTOMATION_PAT }}
       # Keep this pin in step with claude-review.yml; the reasoning is recorded there.
-      - uses: anthropics/claude-code-action@v1.0.252
+      - uses: anthropics/claude-code-action@v1.0.261
         env:
           # Headless runs end when the main conversation stops, so work handed
           # to background subagents or commands is never reported back. See
